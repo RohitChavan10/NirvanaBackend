@@ -59,12 +59,17 @@ public function login(Request $request)
             'message' => 'Invalid email or password.',
         ], 401);
     }
+    // Create Sanctum token
+    $token = $user->createToken('api-token')->plainTextToken;
 
     // (Optional: Later we will issue Sanctum tokens here)
     return response()->json([
         'message' => 'Login successful.',
         'user' => $user,
+        'token'   => $token,
     ], 200);
 }
+
+
 
 }
