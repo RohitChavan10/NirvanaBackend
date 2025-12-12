@@ -4,7 +4,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BuildingDetailsController;
-use App\Http\Controllers\LeaseDetailsController;
+use App\Http\Controllers\LeaseDetailsController;   
 
 
 

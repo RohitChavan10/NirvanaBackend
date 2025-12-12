@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\User;
+use App\Models\UserAccess;
 use Illuminate\Support\Facades\Hash;
 
 class AuthController extends Controller
@@ -36,6 +37,14 @@ class AuthController extends Controller
         'password'       => Hash::make($validated['password']),
         'user_type'      => $validated['user_type'],
     ]);
+    // Initialize user access with default permissions
+    UserAccess::create([
+    'user_id' => $user->id,
+    'create' => $user->user_type === 'admin' ? 1 : 0,
+    'view' => 1, // All users can view
+    'edit' => $user->user_type === 'admin' ? 1 : 0,
+    'delete' => $user->user_type === 'admin' ? 1 : 0,
+]);
 
     return response()->json([
         'message' => 'User created successfully.',
