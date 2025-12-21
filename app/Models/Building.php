@@ -6,18 +6,50 @@ use Illuminate\Database\Eloquent\Model;
 
 class Building extends Model
 {
-     protected $fillable = [
-        'uid','name','address','city','state','country',
-        'managed_by','building_age','status','area','nearest_landmarks',
-        'rent','contact_person','history','images','latitude','longitude'
+    // Optional: explicitly define table name
+    protected $table = 'buildings';
+
+    // Mass assignable fields
+    protected $fillable = [
+        'system_building_id',
+        'sio',
+        'building_name',
+        'address_1',
+        'city',
+        'zip_code',
+        'country',
+        'clli',
+        'building_type',
+        'building_rentable_area',
+        'building_measure_units',
+        'latitude',
+        'longitude',
+        'geocode_latitude',
+        'geocode_longitude',
+        'building_images',
+        'building_status',
+        'purchase_price',
+        'currency_type',
+        'construction_year',
+        'last_renovation_year',
+        'portfolio',
+        'portfolio_sub_group',
+        'ownership_type',
+        'managed_by',
     ];
 
-    protected $casts = [
-        'images' => 'array'
-    ];
+    // If you plan to store images as JSON array later
+    // protected $casts = [
+    //     'building_images' => 'array',
+    // ];
 
-    public function leaseDetails()
+    /**
+     * Relationships
+     *
+     * A building can have multiple leases.
+     */
+    public function leases()
     {
-        return $this->hasOne(LeaseDetail::class);
+        return $this->hasMany(Lease::class, 'system_building_id', 'system_building_id');
     }
 }

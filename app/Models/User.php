@@ -18,8 +18,8 @@ class User extends Authenticatable
      *
      * @var list<string>
      */
-     protected $primaryKey = 'user_id';
-      public $incrementing = true;
+    protected $primaryKey = 'user_id';
+    public $incrementing = true;
     protected $fillable = [
         'username',
         'user_firstName',
@@ -51,8 +51,15 @@ class User extends Authenticatable
             'password' => 'hashed',
         ];
     }
-    public function access()
-{
-    return $this->hasOne(UserAccess::class);
-}
+    public function roles()
+    {
+        return $this->belongsToMany( Role::class, 'user_roles','user_id','role_id');
+    }
+    /**
+     * Workflow logs performed by this user
+     */
+    public function workflowLogs()
+    {
+        return $this->hasMany(WorkflowLog::class, 'user_id', 'user_id');
+    }
 }

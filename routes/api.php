@@ -3,30 +3,101 @@
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
-use App\Http\Controllers\BuildingDetailsController;
-use App\Http\Controllers\LeaseDetailsController;   
+use App\Http\Controllers\BuildingController;
+use App\Http\Controllers\LeaseController;
+use App\Http\Controllers\LeaseExpenseController;
+use App\Http\Controllers\ModuleController;
+use App\Http\Controllers\PermissionController;
+use App\Http\Controllers\RoleController;
+use App\Http\Controllers\UserController;
 
-
-
-Route::middleware(['auth:sanctum'])->group(function () {
-    Route::post('/register', [AuthController::class, 'register']);
-});
-
+/*
+|--------------------------------------------------------------------------
+| Public Routes
+|--------------------------------------------------------------------------
+*/
 Route::post('/login', [AuthController::class, 'login']);
 
+/*
+|--------------------------------------------------------------------------
+| Authenticated Routes
+|--------------------------------------------------------------------------
+*/
 Route::middleware(['auth:sanctum'])->group(function () {
 
-    // Building CRUD
-    Route::get('/buildings', [BuildingDetailsController::class, 'index']);
-    Route::post('/buildings', [BuildingDetailsController::class, 'store']);
-    Route::get('/buildings/{id}', [BuildingDetailsController::class, 'show']);
-    Route::put('/buildings/{id}', [BuildingDetailsController::class, 'update']);
-    Route::delete('/buildings/{id}', [BuildingDetailsController::class, 'destroy']);
+    // Auth
+    Route::post('/register', [AuthController::class, 'register']);
 
-    // Lease CRUD
-    Route::get('/leases', [LeaseDetailsController::class, 'index']);
-    Route::post('/leases', [LeaseDetailsController::class, 'store']);
-    Route::get('/leases/{id}', [LeaseDetailsController::class, 'show']);
-    Route::put('/leases/{id}', [LeaseDetailsController::class, 'update']);
-    Route::delete('/leases/{id}', [LeaseDetailsController::class, 'destroy']);
+    // Users
+    Route::get('users', [UserController::class, 'index']);
+    Route::post('users/{id}/roles', [UserController::class, 'assignRoles']);
+
+    /*
+    |--------------------------------------------------------------------------
+    | Building Routes
+    |--------------------------------------------------------------------------
+    */
+    Route::prefix('buildings')->group(function () {
+        Route::get('/', [BuildingController::class, 'index'])->middleware('permission:view,BUILDING');
+        Route::post('/', [BuildingController::class, 'store'])->middleware('permission:create,BUILDING');
+        Route::get('/{id}', [BuildingController::class, 'show'])->middleware('permission:view,BUILDING');
+        Route::put('/{id}', [BuildingController::class, 'update'])->middleware('permission:edit,BUILDING');
+        Route::delete('/{id}', [BuildingController::class, 'destroy'])->middleware('permission:delete,BUILDING');
+    });
+
+    /*
+    |--------------------------------------------------------------------------
+    | Lease Routes
+    |--------------------------------------------------------------------------
+    */
+    Route::prefix('leases')->group(function () {
+        Route::get('/', [LeaseController::class, 'index'])->middleware('permission:view,LEASE');
+        Route::post('/', [LeaseController::class, 'store'])->middleware('permission:create,LEASE');
+        Route::get('/{id}', [LeaseController::class, 'show'])->middleware('permission:view,LEASE');
+        Route::put('/{id}', [LeaseController::class, 'update'])->middleware('permission:edit,LEASE');
+        Route::delete('/{id}', [LeaseController::class, 'destroy'])->middleware('permission:delete,LEASE');
+    });
+
+    /*
+    |--------------------------------------------------------------------------
+    | LeaseExpense Routes
+    |--------------------------------------------------------------------------
+    */
+    Route::prefix('expenses')->group(function () {
+        Route::get('/', [LeaseExpenseController::class, 'index'])->middleware('permission:view,EXPENSE');
+        Route::post('/', [LeaseExpenseController::class, 'store'])->middleware('permission:create,EXPENSE');
+        Route::get('/{id}', [LeaseExpenseController::class, 'show'])->middleware('permission:view,EXPENSE');
+        Route::put('/{id}', [LeaseExpenseController::class, 'update'])->middleware('permission:edit,EXPENSE');
+        Route::delete('/{id}', [LeaseExpenseController::class, 'destroy'])->middleware('permission:delete,EXPENSE');
+    });
+});
+
+/*
+|--------------------------------------------------------------------------
+| Admin Routes (Modules, Permissions, Roles)
+|--------------------------------------------------------------------------
+*/
+Route::prefix('admin')->middleware(['auth:sanctum'])->group(function () {
+
+    // Modules
+    Route::get('modules', [ModuleController::class, 'index']);
+    Route::post('modules', [ModuleController::class, 'store']);
+    Route::put('modules/{id}', [ModuleController::class, 'update']);
+    Route::delete('modules/{id}', [ModuleController::class, 'destroy']);
+
+    // Permissions
+    Route::get('permissions', [PermissionController::class, 'index']);
+    Route::post('permissions', [PermissionController::class, 'store']);
+    Route::put('permissions/{id}', [PermissionController::class, 'update']);
+    Route::delete('permissions/{id}', [PermissionController::class, 'destroy']);
+
+    // Roles
+    Route::get('roles', [RoleController::class, 'index']);
+    Route::post('roles', [RoleController::class, 'store']);
+    Route::put('roles/{id}', [RoleController::class, 'update']);
+    Route::delete('roles/{id}', [RoleController::class, 'destroy']);
+
+    // Users (assign roles, list users)
+    Route::get('users', [UserController::class, 'index']);
+    Route::post('users/{id}/roles', [UserController::class, 'assignRoles']);
 });
