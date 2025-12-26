@@ -8,7 +8,5 @@ class Permission extends Model
 {
     protected $fillable = ['action']; // create, view, approve, etc.
 
-        public function module() {
-    return $this->belongsTo(Module::class, 'module_id');
-}
+
 }

@@ -8,18 +8,25 @@ use Illuminate\Http\Request;
 class LeaseController extends Controller
 {
     // Helper to check user permissions for a module
-    private function checkPermission($user, $action)
-    {
-        $hasPermission = $user->roles()
-            ->whereHas('modules.permissions', function ($q) use ($action) {
-                $q->where('action', $action)
-                  ->where('modules.code', 'LEASE');
-            })->exists();
-
-        if (!$hasPermission) {
-            abort(403, "Unauthorized: {$action} permission required for LEASE.");
-        }
+private function checkPermission($user, string $action)
+{
+    if (!$user) {
+        abort(401, 'Unauthenticated');
     }
+
+    $hasPermission = $user->roles()
+        ->whereHas('permissions', function ($q) use ($action) {
+            $q->where('action', $action);
+        })
+        ->whereHas('modules', function ($q) {
+            $q->where('code', 'BUILDING');
+        })
+        ->exists();
+
+    if (!$hasPermission) {
+        abort(403, "Unauthorized: {$action} permission required for BUILDING");
+    }
+}
 
     // List all leases
     public function index(Request $request)

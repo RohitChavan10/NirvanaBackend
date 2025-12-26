@@ -37,13 +37,13 @@ Route::middleware(['auth:sanctum'])->group(function () {
     | Building Routes
     |--------------------------------------------------------------------------
     */
-    Route::prefix('buildings')->group(function () {
-        Route::get('/', [BuildingController::class, 'index'])->middleware('permission:view,BUILDING');
-        Route::post('/', [BuildingController::class, 'store'])->middleware('permission:create,BUILDING');
-        Route::get('/{id}', [BuildingController::class, 'show'])->middleware('permission:view,BUILDING');
-        Route::put('/{id}', [BuildingController::class, 'update'])->middleware('permission:edit,BUILDING');
-        Route::delete('/{id}', [BuildingController::class, 'destroy'])->middleware('permission:delete,BUILDING');
-    });
+  Route::middleware('auth:sanctum')->prefix('buildings')->group(function () {
+    Route::get('/', [BuildingController::class, 'index']);
+    Route::post('/', [BuildingController::class, 'store']);
+    Route::get('/{id}', [BuildingController::class, 'show']);
+    Route::put('/{id}', [BuildingController::class, 'update']);
+    Route::delete('/{id}', [BuildingController::class, 'destroy']);
+});
 
     /*
     |--------------------------------------------------------------------------
@@ -51,11 +51,11 @@ Route::middleware(['auth:sanctum'])->group(function () {
     |--------------------------------------------------------------------------
     */
     Route::prefix('leases')->group(function () {
-        Route::get('/', [LeaseController::class, 'index'])->middleware('permission:view,LEASE');
-        Route::post('/', [LeaseController::class, 'store'])->middleware('permission:create,LEASE');
-        Route::get('/{id}', [LeaseController::class, 'show'])->middleware('permission:view,LEASE');
-        Route::put('/{id}', [LeaseController::class, 'update'])->middleware('permission:edit,LEASE');
-        Route::delete('/{id}', [LeaseController::class, 'destroy'])->middleware('permission:delete,LEASE');
+        Route::get('/', [LeaseController::class, 'index']);
+        Route::post('/', [LeaseController::class, 'store']);
+        Route::get('/{id}', [LeaseController::class, 'show']);
+        Route::put('/{id}', [LeaseController::class, 'update']);
+        Route::delete('/{id}', [LeaseController::class, 'destroy']);
     });
 
     /*

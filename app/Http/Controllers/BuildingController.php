@@ -4,23 +4,32 @@ namespace App\Http\Controllers;
 
 use App\Models\Building;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 class BuildingController extends Controller
 {
-    // Helper to check user permissions for a module
-    private function checkPermission($user, $action)
-    {
-        $hasPermission = $user->roles()
-            ->whereHas('modules.permissions', function ($q) use ($action) {
-                $q->where('action', $action)
-                  ->where('modules.code', 'BUILDING');
-            })->exists();
-
-        if (!$hasPermission) {
-            abort(403, "Unauthorized: {$action} permission required for BUILDING.");
-        }
+   /**
+     * Check if user has permission for BUILDING module
+     */
+private function checkPermission($user, string $action)
+{
+    if (!$user) {
+        abort(401, 'Unauthenticated');
     }
 
+    $hasPermission = $user->roles()
+        ->whereHas('permissions', function ($q) use ($action) {
+            $q->where('action', $action);
+        })
+        ->whereHas('modules', function ($q) {
+            $q->where('code', 'BUILDING');
+        })
+        ->exists();
+
+    if (!$hasPermission) {
+        abort(403, "Unauthorized: {$action} permission required for BUILDING");
+    }
+}
     // List all buildings
     public function index(Request $request)
     {
