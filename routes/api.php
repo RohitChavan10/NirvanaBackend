@@ -10,6 +10,7 @@ use App\Http\Controllers\ModuleController;
 use App\Http\Controllers\PermissionController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\UserController;
+use App\Http\Controllers\DashboardController;
 
 /*
 |--------------------------------------------------------------------------
@@ -101,3 +102,8 @@ Route::prefix('admin')->middleware(['auth:sanctum'])->group(function () {
     Route::get('users', [UserController::class, 'index']);
     Route::post('users/{id}/roles', [UserController::class, 'assignRoles']);
 });
+
+Route::middleware('auth:sanctum')->get(
+  '/dashboard/stats',
+  [DashboardController::class, 'stats']
+);
