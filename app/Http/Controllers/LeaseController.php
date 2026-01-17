@@ -3,7 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Models\Lease;
+use App\Services\WorkflowService;
 use Illuminate\Http\Request;
+use App\Models\WorkflowLog;
+use App\Models\User;
 
 class LeaseController extends Controller
 {
@@ -19,12 +22,12 @@ private function checkPermission($user, string $action)
             $q->where('action', $action);
         })
         ->whereHas('modules', function ($q) {
-            $q->where('code', 'BUILDING');
+            $q->where('code', 'LEASE');
         })
         ->exists();
 
     if (!$hasPermission) {
-        abort(403, "Unauthorized: {$action} permission required for BUILDING");
+        abort(403, "Unauthorized: {$action} permission required for LEASE");
     }
 }
 
@@ -89,6 +92,12 @@ private function checkPermission($user, string $action)
         ]);
 
         $lease = Lease::create($validated);
+                 WorkflowService::log([
+        'lease_id' => $lease->id,
+        'status' => 'CREATED',
+        'notes' => 'Lease created',
+        'stage_order' => 1
+    ]);
 
         return response()->json([
             'message' => 'Lease created successfully',
@@ -97,18 +106,58 @@ private function checkPermission($user, string $action)
     }
 
     // Show a specific lease
-    public function show(Request $request, $id)
-    {
-        $this->checkPermission($request->user(), 'view');
+public function show(Request $request, $id)
+{
+    $this->checkPermission($request->user(), 'view');
 
-        $lease = Lease::with('building')->find($id);
-
-        if (!$lease) {
-            return response()->json(['message' => 'Lease not found'], 404);
-        }
-
-        return response()->json($lease, 200);
+    $lease = Lease::with('building')->find($id);
+    if (!$lease) {
+        return response()->json(['message' => 'Lease not found'], 404);
     }
+
+    /* 🔹 Fetch workflow logs for this lease */
+    $logs = WorkflowLog::where('lease_id', $id)
+        ->orderBy('created_at', 'asc')
+        ->get();
+
+    /* 🔹 Identify creator & approver */
+    $createdLog  = $logs->firstWhere('status', 'CREATED');
+    $approvedLog = $logs->firstWhere('status', 'APPROVED');
+
+    $creator  = null;
+    $approver = null;
+
+    if ($createdLog) {
+        $user = User::find($createdLog->user_id);
+        if ($user) {
+            $creator = [
+                'user_id'    => $user->id,
+                'name'       => trim($user->user_firstName . ' ' . $user->user_lastName),
+                'created_at' => $createdLog->created_at
+            ];
+        }
+    }
+
+    if ($approvedLog) {
+        $user = User::find($approvedLog->user_id);
+        if ($user) {
+            $approver = [
+                'user_id'     => $user->id,
+                'name'        => trim($user->user_firstName . ' ' . $user->user_lastName),
+                'approved_at' => $approvedLog->created_at
+            ];
+        }
+    }
+
+    return response()->json([
+        'lease' => $lease,
+        'workflow' => [
+            'status' => $approvedLog ? 'APPROVED' : 'PENDING',
+            'created_by' => $creator,
+            'approved_by' => $approver ?? 'Approval Pending'
+        ]
+    ], 200);
+}
 
     // Update a lease
     public function update(Request $request, $id)
@@ -122,6 +171,12 @@ private function checkPermission($user, string $action)
         }
 
         $lease->update($request->all());
+           WorkflowService::log([
+        'lease_id' => $lease->id,
+        'status' => 'UPDATED',
+        'notes' => 'Lease updated',
+        'stage_order' => 2
+    ]);
 
         return response()->json([
             'message' => 'Lease updated successfully',
@@ -141,6 +196,12 @@ private function checkPermission($user, string $action)
         }
 
         $lease->update(['lease_status' => 'Inactive']);
+        WorkflowService::log([
+    'lease_id' => $lease->id,
+    'status' => 'DELETED',
+    'notes' => 'Lease deleted',
+        'stage_order' => 3
+]);
 
         return response()->json(['message' => 'Lease marked as inactive'], 200);
     }

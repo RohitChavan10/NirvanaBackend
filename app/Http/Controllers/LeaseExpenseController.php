@@ -3,24 +3,33 @@
 namespace App\Http\Controllers;
 
 use App\Models\LeaseExpense;
+use App\Services\WorkflowService;
 use Illuminate\Http\Request;
+use App\Models\WorkflowLog;
+use App\Models\User;    
 
 class LeaseExpenseController extends Controller
 {
     // Helper to check user permissions for the EXPENSE module
-    private function checkPermission($user, $action)
-    {
-        $hasPermission = $user->roles()
-            ->whereHas('modules.permissions', function ($q) use ($action) {
-                $q->where('action', $action)
-                  ->where('modules.code', 'EXPENSE');
-            })->exists();
-
-        if (!$hasPermission) {
-            abort(403, "Unauthorized: {$action} permission required for EXPENSE.");
-        }
+  private function checkPermission($user, string $action)
+{
+    if (!$user) {
+        abort(401, 'Unauthenticated');
     }
 
+    $hasPermission = $user->roles()
+        ->whereHas('permissions', function ($q) use ($action) {
+            $q->where('action', $action);
+        })
+        ->whereHas('modules', function ($q) {
+            $q->where('code', 'EXPENSE');
+        })
+        ->exists();
+
+    if (!$hasPermission) {
+        abort(403, "Unauthorized: {$action} permission required for EXPENSE");
+    }
+}
     // List all expenses
     public function index(Request $request)
     {
@@ -50,6 +59,12 @@ class LeaseExpenseController extends Controller
         ]);
 
         $expense = LeaseExpense::create($validated);
+        WorkflowService::log([
+    'expense_id' => $expense->id,
+      'status' => 'CREATED',
+        'notes' => 'Expense created',
+        'stage_order' => 1
+]);
 
         return response()->json([
             'message' => 'Expense created successfully',
@@ -58,18 +73,58 @@ class LeaseExpenseController extends Controller
     }
 
     // Show a specific expense
-    public function show(Request $request, $id)
-    {
-        $this->checkPermission($request->user(), 'view');
+ public function show(Request $request, $id)
+ {
+    $this->checkPermission($request->user(), 'view');
 
-        $expense = LeaseExpense::find($id);
+    $expense = LeaseExpense::where('expense_id', $id)->first();
 
-        if (!$expense) {
-            return response()->json(['message' => 'Expense not found'], 404);
-        }
-
-        return response()->json($expense, 200);
+    if (!$expense) {
+        return response()->json(['message' => 'Expense not found'], 404);
     }
+
+    /* 🔹 Fetch workflow logs for this expense */
+    $logs = WorkflowLog::where('expense_id', $id)
+        ->orderBy('created_at', 'asc')
+        ->get();
+
+    $createdLog  = $logs->firstWhere('status', 'CREATED');
+    $approvedLog = $logs->firstWhere('status', 'APPROVED');
+
+    $creator = null;
+    $approver = null;
+
+    if ($createdLog) {
+        $user = User::find($createdLog->user_id);
+        if ($user) {
+            $creator = [
+                'user_id'    => $user->user_id,
+                'name'       => trim($user->user_firstName . ' ' . $user->user_lastName),
+                'created_at' => $createdLog->created_at
+            ];
+        }
+    }
+
+    if ($approvedLog) {
+        $user = User::find($approvedLog->user_id);
+        if ($user) {
+            $approver = [
+                'user_id'     => $user->user_id,
+                'name'        => trim($user->user_firstName . ' ' . $user->user_lastName),
+                'approved_at' => $approvedLog->created_at
+            ];
+        }
+    }
+
+    return response()->json([
+        'expense' => $expense,
+        'workflow' => [
+            'status' => $approvedLog ? 'APPROVED' : 'PENDING',
+            'created_by' => $creator,
+            'approved_by' => $approver ?? 'Approval Pending'
+        ]
+    ], 200);
+ }
 
     // Update an expense
     public function update(Request $request, $id)
@@ -83,6 +138,12 @@ class LeaseExpenseController extends Controller
         }
 
         $expense->update($request->all());
+        WorkflowService::log([
+    'expense_id' => $expense->id,
+    'status' => 'UPDATED',
+    'notes' => 'Expense updated',
+        'stage_order' => 2
+]);
 
         return response()->json([
             'message' => 'Expense updated successfully',
@@ -102,7 +163,14 @@ class LeaseExpenseController extends Controller
         }
 
         $expense->update(['status' => 'Inactive']);
+        WorkflowService::log([
+    'expense_id' => $expense->id,
+    'status' => 'DELETED',
+     'notes' => 'Expense updated',
+        'stage_order' => 3
+]);
 
         return response()->json(['message' => 'Expense marked as inactive'], 200);
     }
 }
+

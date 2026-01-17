@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Http\Request;
+use App\Http\Controllers\WorkflowController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BuildingController;
@@ -11,6 +12,7 @@ use App\Http\Controllers\PermissionController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\DashboardController;
+
 
 /*
 |--------------------------------------------------------------------------
@@ -65,11 +67,11 @@ Route::middleware(['auth:sanctum'])->group(function () {
     |--------------------------------------------------------------------------
     */
     Route::prefix('expenses')->group(function () {
-        Route::get('/', [LeaseExpenseController::class, 'index'])->middleware('permission:view,EXPENSE');
-        Route::post('/', [LeaseExpenseController::class, 'store'])->middleware('permission:create,EXPENSE');
-        Route::get('/{id}', [LeaseExpenseController::class, 'show'])->middleware('permission:view,EXPENSE');
-        Route::put('/{id}', [LeaseExpenseController::class, 'update'])->middleware('permission:edit,EXPENSE');
-        Route::delete('/{id}', [LeaseExpenseController::class, 'destroy'])->middleware('permission:delete,EXPENSE');
+        Route::get('/', [LeaseExpenseController::class, 'index']);
+        Route::post('/', [LeaseExpenseController::class, 'store']);
+        Route::get('/{id}', [LeaseExpenseController::class, 'show']);
+        Route::put('/{id}', [LeaseExpenseController::class, 'update']);
+        Route::delete('/{id}', [LeaseExpenseController::class, 'destroy']);
     });
 });
 
@@ -102,6 +104,14 @@ Route::prefix('admin')->middleware(['auth:sanctum'])->group(function () {
     Route::get('users', [UserController::class, 'index']);
     Route::post('users/{id}/roles', [UserController::class, 'assignRoles']);
 });
+
+Route::middleware('auth:sanctum')->prefix('workflow')->group(function () {
+    Route::get('/pending', [WorkflowController::class, 'pending']);   // list
+    Route::get('/{id}', [WorkflowController::class, 'show']);         // single page
+    Route::post('/{id}/approve', [WorkflowController::class, 'approve']);
+    Route::post('/{id}/reject',  [WorkflowController::class, 'reject']);
+});
+
 
 Route::middleware('auth:sanctum')->get(
   '/dashboard/stats',

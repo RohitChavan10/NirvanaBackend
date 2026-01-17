@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class LeaseExpense extends Model
 {
+    
       protected $table = 'lease_expenses';
 
     protected $fillable = [

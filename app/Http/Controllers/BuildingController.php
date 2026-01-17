@@ -3,7 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Models\Building;
+use App\Services\WorkflowService;
 use Illuminate\Http\Request;
+use App\Models\WorkflowLog;
+use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 
 class BuildingController extends Controller
@@ -72,22 +75,69 @@ private function checkPermission($user, string $action)
         ]);
 
         $building = Building::create($validated);
+         WorkflowService::log([
+        'building_id' => $building->id,
+        'status' => 'CREATED',
+        'notes' => 'Building created',
+        'stage_order' => 1
+    ]);
 
         return response()->json($building, 201);
     }
 
     // Show a specific building
-    public function show(Request $request, $id)
-    {
-        $this->checkPermission($request->user(), 'view');
+public function show(Request $request, $id)
+{
+    $this->checkPermission($request->user(), 'view');
 
-        $building = Building::find($id);
-        if (!$building) {
-            return response()->json(['message' => 'Not found'], 404);
-        }
-
-        return response()->json($building, 200);
+    $building = Building::find($id);
+    if (!$building) {
+        return response()->json(['message' => 'Not found'], 404);
     }
+
+    /* 🔹 Fetch workflow logs for this building */
+    $logs = WorkflowLog::where('building_id', $id)
+        ->orderBy('created_at', 'asc')
+        ->get();
+
+    /* 🔹 Identify creator */
+    $createdLog = $logs->firstWhere('status', 'CREATED');
+    $approvedLog = $logs->firstWhere('status', 'APPROVED');
+
+    $creator = null;
+    $approver = null;
+
+    if ($createdLog) {
+        $user = User::find($createdLog->user_id);
+        if ($user) {
+            $creator = [
+                'user_id' => $user->user_id,
+                'name' => trim($user->user_firstName . ' ' . $user->user_lastName),
+                'created_at' => $createdLog->created_at
+            ];
+        }
+    }
+
+    if ($approvedLog) {
+        $user = User::find($approvedLog->user_id);
+        if ($user) {
+            $approver = [
+                'user_id' => $user->user_id,
+                'name' => trim($user->user_firstName  . ' ' . $user->user_lastName),
+                'approved_at' => $approvedLog->created_at
+            ];
+        }
+    }
+
+    return response()->json([
+        'building' => $building,
+        'workflow' => [
+            'status' => $approvedLog ? 'APPROVED' : 'PENDING',
+            'created_by' => $creator,
+            'approved_by' => $approver ?? 'Approval Pending'
+        ]
+    ], 200);
+}
 
     // Update building
     public function update(Request $request, $id)
@@ -100,6 +150,12 @@ private function checkPermission($user, string $action)
         }
 
         $building->update($request->all());
+         WorkflowService::log([
+        'building_id' => $building->id,
+        'status' => 'UPDATED',
+        'notes' => 'Building updated',
+        'stage_order' => 2
+    ]);
         return response()->json($building, 200);
     }
 
@@ -114,6 +170,12 @@ private function checkPermission($user, string $action)
         }
 
         $building->update(['building_status' => 'Inactive']);
+         WorkflowService::log([
+        'building_id' => $building->id,
+        'status' => 'DELETED',
+        'notes' => 'Building deleted',
+        'stage_order' => 3
+    ]);
         return response()->json(['message' => 'Building marked as inactive'], 200);
     }
 }
