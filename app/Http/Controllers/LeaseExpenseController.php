@@ -131,7 +131,7 @@ class LeaseExpenseController extends Controller
     {
         $this->checkPermission($request->user(), 'edit');
 
-        $expense = LeaseExpense::find($id);
+        $expense = LeaseExpense::where('expense_id', $id)->first();
 
         if (!$expense) {
             return response()->json(['message' => 'Expense not found'], 404);
@@ -156,7 +156,7 @@ class LeaseExpenseController extends Controller
     {
         $this->checkPermission($request->user(), 'delete');
 
-        $expense = LeaseExpense::find($id);
+        $expense = LeaseExpense::where('expense_id', $id)->first();
 
         if (!$expense) {
             return response()->json(['message' => 'Expense not found'], 404);
