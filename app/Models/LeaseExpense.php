@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class LeaseExpense extends Model
 {
-    
+    protected $primaryKey = 'expense_id';
       protected $table = 'lease_expenses';
 
     protected $fillable = [

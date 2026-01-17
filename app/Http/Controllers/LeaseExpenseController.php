@@ -127,29 +127,41 @@ class LeaseExpenseController extends Controller
  }
 
     // Update an expense
-    public function update(Request $request, $id)
-    {
-        $this->checkPermission($request->user(), 'edit');
+public function update(Request $request, $id)
+{
+    $this->checkPermission($request->user(), 'edit');
 
-        $expense = LeaseExpense::where('expense_id', $id)->first();
+    $expense = LeaseExpense::where('expense_id', $id)->first();
 
-        if (!$expense) {
-            return response()->json(['message' => 'Expense not found'], 404);
-        }
-
-        $expense->update($request->all());
-        WorkflowService::log([
-    'expense_id' => $expense->id,
-    'status' => 'UPDATED',
-    'notes' => 'Expense updated',
-        'stage_order' => 2
-]);
-
-        return response()->json([
-            'message' => 'Expense updated successfully',
-            'data' => $expense
-        ], 200);
+    if (!$expense) {
+        return response()->json(['message' => 'Expense not found'], 404);
     }
+
+    $validated = $request->validate([
+        'expense_year' => 'nullable|string',
+        'expense_period' => 'nullable|string',
+        'expense_category' => 'nullable|string',
+        'expense_type' => 'nullable|string',
+        'amount' => 'nullable|string',
+        'currency' => 'nullable|string',
+        'note' => 'nullable|string',
+    ]);
+
+    $expense->update($validated);
+
+    WorkflowService::log([
+        'expense_id' => $expense->expense_id,
+        'status' => 'UPDATED',
+        'notes' => 'Expense updated',
+        'stage_order' => 2
+    ]);
+
+    return response()->json([
+        'message' => 'Expense updated successfully',
+        'data' => $expense
+    ]);
+}
+
 
     // Delete an expense (mark as inactive)
     public function destroy(Request $request, $id)

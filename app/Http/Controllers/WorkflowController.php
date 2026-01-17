@@ -38,7 +38,7 @@ public function pending(Request $request)
             'user:user_id,user_firstName,user_lastName',
             'building:id,building_name',
             'lease:id,client_lease_id',
-            'expense:id'
+            'expense:expense_id,expense_type'
         ])
         ->whereIn('status', ['CREATED', 'UPDATED', 'APPROVED', 'REJECTED'])
         ->orderBy('created_at', 'desc')
@@ -51,7 +51,7 @@ public function pending(Request $request)
                 'notes' => $log->notes,
                 'created_at' => $log->created_at,
 
-                'user' => $log->user_id
+                'user' => $log->user
                     ? $log->user->user_firstName . ' ' . $log->user->user_lastName
                     : null,
 
@@ -65,7 +65,7 @@ public function pending(Request $request)
                         : ($log->lease
                             ? $log->lease->client_lease_id
                             : ($log->expense
-                                ? $log->expense->id
+                                ? 'Expense #' . $log->expense->expense_id
                                 : null
                             )
                         )
