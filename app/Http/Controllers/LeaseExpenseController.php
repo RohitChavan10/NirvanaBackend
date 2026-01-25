@@ -184,5 +184,8 @@ public function update(Request $request, $id)
 
         return response()->json(['message' => 'Expense marked as inactive'], 200);
     }
+
+
+
 }
 

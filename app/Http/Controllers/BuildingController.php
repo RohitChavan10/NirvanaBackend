@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Building;
+use App\Models\Lease;
 use App\Services\WorkflowService;
 use Illuminate\Http\Request;
 use App\Models\WorkflowLog;
@@ -39,6 +40,14 @@ private function checkPermission($user, string $action)
         $this->checkPermission($request->user(), 'view');
 
         return response()->json(Building::all(), 200);
+    }
+
+    // List all buildings
+        public function BuildingID(Request $request)
+    {
+        $this->checkPermission($request->user(), 'view');
+
+        return response()->json(Building::select('id','building_name')->get(), 200);
     }
 
     // Store a new building
@@ -128,6 +137,18 @@ public function show(Request $request, $id)
             ];
         }
     }
+     /* 🔹 Fetch leases for this building (for cards) */
+    $leases = Lease::where('building_id', $id)
+        ->select([
+            'id',
+            'client_lease_id',
+            'landlord_legal_name',
+            'lease_agreement_date',
+            'termination_date',
+            'lease_status'
+        ])
+        ->orderBy('created_at', 'desc')
+        ->get();
 
     return response()->json([
         'building' => $building,
@@ -135,7 +156,8 @@ public function show(Request $request, $id)
             'status' => $approvedLog ? 'APPROVED' : 'PENDING',
             'created_by' => $creator,
             'approved_by' => $approver ?? 'Approval Pending'
-        ]
+        ],
+        'leases' => $leases
     ], 200);
 }
 

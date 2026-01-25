@@ -66,4 +66,9 @@ class Lease extends Model
     {
         return $this->belongsTo(Building::class, 'system_building_id', 'system_building_id');
     }
+
+      public function documents()
+    {
+        return $this->hasMany(LeaseDocument::class);
+    }
 }

@@ -39,4 +39,8 @@ class LeaseExpense extends Model
     {
         return $this->belongsTo(Building::class, 'building_id', 'id');
     }
+      public function invoices()
+    {
+        return $this->hasMany(AccountInvoice::class, 'expense_id');
+    }
 }

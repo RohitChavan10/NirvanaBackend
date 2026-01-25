@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AccountInvoiceController;
 use Illuminate\Http\Request;
 use App\Http\Controllers\WorkflowController;
 use Illuminate\Support\Facades\Route;
@@ -12,7 +13,7 @@ use App\Http\Controllers\PermissionController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\DashboardController;
-
+use App\Http\Controllers\LeaseDocumentController;
 
 /*
 |--------------------------------------------------------------------------
@@ -42,6 +43,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
     */
   Route::middleware('auth:sanctum')->prefix('buildings')->group(function () {
     Route::get('/', [BuildingController::class, 'index']);
+     Route::get('/names', [BuildingController::class, 'BuildingID']);
     Route::post('/', [BuildingController::class, 'store']);
     Route::get('/{id}', [BuildingController::class, 'show']);
     Route::put('/{id}', [BuildingController::class, 'update']);
@@ -117,3 +119,21 @@ Route::middleware('auth:sanctum')->get(
   '/dashboard/stats',
   [DashboardController::class, 'stats']
 );
+
+Route::middleware('auth:sanctum')->group(function () {
+
+ // Lease Documents
+Route::get('/documents', [LeaseDocumentController::class, 'all']); // all documents
+Route::post('/documents', [LeaseDocumentController::class, 'store']); // upload
+Route::get('/documents/{id}', [LeaseDocumentController::class, 'show']); // single doc
+Route::put('/documents/{id}', [LeaseDocumentController::class, 'update']); // update
+Route::get('/leases/{lease_id}/documents', [LeaseDocumentController::class, 'index']); // by lease
+
+// Invoices
+Route::get('/invoices', [AccountInvoiceController::class, 'all']);
+Route::post('/invoices', [AccountInvoiceController::class, 'store']);
+Route::get('/invoices/{id}', [AccountInvoiceController::class, 'show']);
+Route::put('/invoices/{id}', [AccountInvoiceController::class, 'update']);
+Route::get('/expenses/{expense_id}/invoices', [AccountInvoiceController::class, 'byExpense']);
+
+});
