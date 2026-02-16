@@ -67,9 +67,25 @@ class LeaseDocumentController extends Controller
      */
     public function index($lease_id)
     {
-        $documents = LeaseDocument::where('lease_id', $lease_id)
-            ->orderBy('created_at', 'desc')
-            ->get();
+         $documents = LeaseDocument::with('uploader')
+        ->where('lease_id', $lease_id)
+        ->orderBy('created_at', 'desc')
+        ->get()
+        ->map(function ($doc) {
+            return [
+                'id' => $doc->id,
+                'lease_id' => $doc->lease_id,
+                'file_name' => $doc->file_name,
+                'file_path' => $doc->file_path,
+                'file_type' => $doc->file_type,
+                'created_at' => $doc->created_at,
+
+                // 🔥 Add uploader info
+                'uploaded_by' => $doc->uploaded_by,
+                'uploaded_by_first_name' => $doc->uploader->user_firstName ?? null,
+                'uploaded_by_last_name' => $doc->uploader->user_lastName ?? null,
+            ];
+        });
 
         return response()->json([
             'lease_id' => $lease_id,
@@ -98,32 +114,74 @@ class LeaseDocumentController extends Controller
      * 🔹 Update document metadata (rename, type)
      * PUT /documents/{id}
      */
-    public function update(Request $request, $id)
-    {
-        $document = LeaseDocument::find($id);
+public function update(Request $request, $id)
+{
+    $document = LeaseDocument::find($id);
 
-        if (!$document) {
-            return response()->json(['message' => 'Document not found'], 404);
-        }
-
-        $request->validate([
-            'file_name'     => 'nullable|string',
-            'file_type'=> 'nullable|string',
-        ]);
-
-        if ($request->has('file_name')) {
-            $document->file_name = $request->file_name;
-        }
-
-        if ($request->has('file_type')) {
-            $document->file_type = $request->file_type;
-        }
-
-        $document->save();
-
-        return response()->json([
-            'message' => 'Document updated successfully',
-            'data' => $document
-        ], 200);
+    if (!$document) {
+        return response()->json(['message' => 'Document not found'], 404);
     }
+
+    $request->validate([
+        'file_name' => 'nullable|string',
+        'file_type' => 'nullable|string',
+        'document'  => 'nullable|file|max:20480', // 20MB
+    ]);
+
+    // 🔹 If new file uploaded
+    if ($request->hasFile('document')) {
+
+        // Delete old file
+        if ($document->file_path) {
+            Storage::disk('public')->delete($document->file_path);
+        }
+
+        // Store new file
+        $file = $request->file('document');
+        $path = $file->store('documents', 'public');
+
+        // Update fields
+        $document->file_path = $path;
+        $document->file_name = $file->getClientOriginalName();
+    }
+
+    // Update optional fields
+    if ($request->has('file_name')) {
+        $document->file_name = $request->file_name;
+    }
+
+    if ($request->has('file_type')) {
+        $document->file_type = $request->file_type;
+    }
+
+    $document->save();
+
+    return response()->json([
+        'message' => 'Document updated successfully',
+        'data' => $document
+    ], 200);
+}
+
+
+        /**
+        * 🔹 Delete a document
+        * DELETE /documents/{id}
+        */
+    public function destroy($id)
+{
+    $document = LeaseDocument::find($id);
+
+    if (!$document) {
+        return response()->json(['message' => 'Document not found'], 404);
+    }
+
+    // Delete file from storage
+    Storage::disk('public')->delete($document->file_path);
+
+    $document->delete();
+
+    return response()->json([
+        'message' => 'Document deleted successfully'
+    ], 200);
+}
 }

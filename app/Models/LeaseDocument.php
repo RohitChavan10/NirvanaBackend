@@ -18,4 +18,8 @@ class LeaseDocument extends Model
     {
         return $this->belongsTo(Lease::class);
     }
+    public function uploader()
+{
+    return $this->belongsTo(User::class, 'uploaded_by', 'user_id');
+}
 }

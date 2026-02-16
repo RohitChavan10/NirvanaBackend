@@ -128,6 +128,7 @@ Route::post('/documents', [LeaseDocumentController::class, 'store']); // upload
 Route::get('/documents/{id}', [LeaseDocumentController::class, 'show']); // single doc
 Route::put('/documents/{id}', [LeaseDocumentController::class, 'update']); // update
 Route::get('/leases/{lease_id}/documents', [LeaseDocumentController::class, 'index']); // by lease
+Route::delete('/documents/{id}', [LeaseDocumentController::class, 'destroy']);
 
 // Invoices
 Route::get('/invoices', [AccountInvoiceController::class, 'all']);
