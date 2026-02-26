@@ -63,6 +63,7 @@ private function checkPermission($user, string $action)
             'city' => 'nullable|string',
             'zip_code' => 'nullable|string',
             'country' => 'nullable|string',
+            'state' => 'nullable|string',
             'clli' => 'nullable|string',
             'building_type' => 'nullable|string',
             'building_rentable_area' => 'nullable|string',
