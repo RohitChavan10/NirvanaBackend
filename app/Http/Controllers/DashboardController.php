@@ -25,18 +25,23 @@ class DashboardController extends Controller
                 DB::raw('count(*) as total')
             )->groupBy('lease_status')->pluck('total', 'lease_status'),
 
-            "buildings_by_country" => Building::select(
-                'country',
-                DB::raw('count(*) as total')
-            )->groupBy('country')->pluck('total', 'country'),
+
+
+"building_locations" => Building::select(
+    'building_name as name',
+    'country',
+    'state' // add later when available
+)->whereNotNull('country')
+ ->get(),
 
             "leases_over_time" => Lease::select(
                 DB::raw("DATE_FORMAT(created_at, '%Y-%m') as month"),
                 DB::raw('count(*) as total')
             )
-            ->groupBy('month')
-            ->orderBy('month')
-            ->pluck('total', 'month'),
+                ->groupBy('month')
+                ->orderBy('month')
+                ->pluck('total', 'month'),
         ]);
     }
 }
+
