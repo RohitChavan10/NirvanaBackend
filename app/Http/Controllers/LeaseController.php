@@ -49,6 +49,12 @@ private function checkPermission($user, string $action)
 
         $validated = $request->validate([
             'building_id' => 'required|exists:buildings,id',
+        'lease_administrator_id'=>'nullable|exists:users,user_id',
+        'permitted_use' => 'nullable|string',
+        'has_break_option' => 'nullable|string',
+        'break_option_date' => 'nullable|string',
+        'break_notice_period' => 'nullable|string',
+        'next_rent_review_date' => 'nullable|string',
             'client_lease_id' => 'nullable|string',
             'system_lease_id' => 'nullable|string',
             'tenant_legal_name' => 'nullable|string',

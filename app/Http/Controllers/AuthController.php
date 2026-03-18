@@ -112,4 +112,14 @@ class AuthController extends Controller
         ], 201);
     }
 
+//Get all users with id
+    public function getUsers(Request $request)
+    {
+        $users = User::select('user_id', 'username', 'email_id')->get();
+
+        return response()->json([
+            'users' => $users
+        ], 200);
+    }
+
 }

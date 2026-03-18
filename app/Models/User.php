@@ -62,4 +62,9 @@ class User extends Authenticatable
     {
         return $this->hasMany(WorkflowLog::class, 'user_id', 'user_id');
     }
+
+    public function administeredLeases()
+{
+    return $this->hasMany(Lease::class, 'lease_administrator_id', 'user_id');
+}
 }

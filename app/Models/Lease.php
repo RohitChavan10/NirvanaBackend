@@ -15,6 +15,12 @@ class Lease extends Model
     protected $fillable = [
         'client_lease_id',
         'system_building_id',
+        'lease_administrator_id',
+        'permitted_use',
+        'has_break_option',
+        'break_option_date',
+        'break_notice_period',
+        'next_rent_review_date',
         'ownership_type',
         'system_lease_id',
         'tenant_legal_name',
@@ -71,4 +77,10 @@ class Lease extends Model
     {
         return $this->hasMany(LeaseDocument::class);
     }
+
+    public function leaseAdministrator()
+{
+    return $this->belongsTo(User::class, 'lease_administrator_id', 'user_id');
+}
+
 }

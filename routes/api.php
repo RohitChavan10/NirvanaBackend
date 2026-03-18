@@ -36,6 +36,8 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::get('users', [UserController::class, 'index']);
     Route::post('users/{id}/roles', [UserController::class, 'assignRoles']);
 
+    Route::get('/users', [AuthController::class, 'getUsers']);
+
     /*
     |--------------------------------------------------------------------------
     | Building Routes
