@@ -116,7 +116,7 @@ public function show(Request $request, $id)
 {
     $this->checkPermission($request->user(), 'view');
 
-    $lease = Lease::with('building')->find($id);
+    $lease = Lease::with(['building', 'leaseAdministrator:user_id,username'])->find($id);
     if (!$lease) {
         return response()->json(['message' => 'Lease not found'], 404);
     }
@@ -157,6 +157,12 @@ public function show(Request $request, $id)
 
     return response()->json([
         'lease' => $lease,
+        'lease_administrator' => $lease->leaseAdministrator
+        ? [
+            'user_id' => $lease->leaseAdministrator->user_id,
+            'username' => $lease->leaseAdministrator->username
+        ]
+        : null,
         'workflow' => [
             'status' => $approvedLog ? 'APPROVED' : 'PENDING',
             'created_by' => $creator,
@@ -168,26 +174,33 @@ public function show(Request $request, $id)
     // Update a lease
     public function update(Request $request, $id)
     {
-        $this->checkPermission($request->user(), 'edit');
+ $this->checkPermission($request->user(), 'edit');
 
-        $lease = Lease::find($id);
+    $lease = Lease::find($id);
 
-        if (!$lease) {
-            return response()->json(['message' => 'Lease not found'], 404);
-        }
+    if (!$lease) {
+        return response()->json(['message' => 'Lease not found'], 404);
+    }
 
-        $lease->update($request->all());
-           WorkflowService::log([
+    $lease->update($request->all());
+
+    WorkflowService::log([
         'lease_id' => $lease->id,
         'status' => 'UPDATED',
         'notes' => 'Lease updated',
         'stage_order' => 2
     ]);
 
-        return response()->json([
-            'message' => 'Lease updated successfully',
-            'data' => $lease
-        ], 200);
+    // 🔹 Reload lease with relationships
+    $lease->load([
+        'building',
+        'leaseAdministrator:user_id,username'
+    ]);
+
+    return response()->json([
+        'message' => 'Lease updated successfully',
+        'data' => $lease
+    ], 200);
     }
 
     // Delete a lease (mark as inactive)
