@@ -6,37 +6,51 @@ use App\Models\LeaseExpense;
 use App\Services\WorkflowService;
 use Illuminate\Http\Request;
 use App\Models\WorkflowLog;
-use App\Models\User;    
+use App\Models\User;
 
 class LeaseExpenseController extends Controller
 {
     // Helper to check user permissions for the EXPENSE module
-  private function checkPermission($user, string $action)
-{
-    if (!$user) {
-        abort(401, 'Unauthenticated');
-    }
-
-    $hasPermission = $user->roles()
-        ->whereHas('permissions', function ($q) use ($action) {
-            $q->where('action', $action);
-        })
-        ->whereHas('modules', function ($q) {
-            $q->where('code', 'EXPENSE');
-        })
-        ->exists();
-
-    if (!$hasPermission) {
-        abort(403, "Unauthorized: {$action} permission required for EXPENSE");
-    }
-}
-    // List all expenses
-    public function index(Request $request)
+    private function checkPermission($user, string $action)
     {
-        $this->checkPermission($request->user(), 'view');
+        if (!$user) {
+            abort(401, 'Unauthenticated');
+        }
 
-        return response()->json(LeaseExpense::all(), 200);
+        $hasPermission = $user->roles()
+            ->whereHas('permissions', function ($q) use ($action) {
+                $q->where('action', $action);
+            })
+            ->whereHas('modules', function ($q) {
+                $q->where('code', 'EXPENSE');
+            })
+            ->exists();
+
+        if (!$hasPermission) {
+            abort(403, "Unauthorized: {$action} permission required for EXPENSE");
+        }
     }
+    // List all expenses
+public function index(Request $request)
+{
+    $this->checkPermission($request->user(), 'view');
+
+    $query = LeaseExpense::query();
+
+    if ($request->building_id) {
+        $query->where('building_id', $request->building_id);
+    }
+
+    if ($request->lease_id) {
+        $query->where('lease_id', $request->lease_id);
+    }
+
+    if ($request->status) {
+        $query->where('status', $request->status);
+    }
+
+    return response()->json($query->latest()->get(), 200);
+}
 
     // Create a new expense
     public function store(Request $request)
@@ -45,7 +59,7 @@ class LeaseExpenseController extends Controller
 
         $validated = $request->validate([
             'lease_id' => 'nullable|exists:leases,id',
-            'system_building_id' => 'nullable|exists:buildings,id',
+            'building_id' => 'nullable|exists:buildings,id',
             'expense_year' => 'nullable|string',
             'expense_period' => 'nullable|string',
             'expense_category' => 'nullable|string',
@@ -56,15 +70,18 @@ class LeaseExpenseController extends Controller
             'document_url' => 'nullable|string',
             'is_escalable' => 'nullable|string',
             'note' => 'nullable|string',
+            'vendor_name' => 'nullable|string',
+            'account_code' => 'nullable|string',
+            
         ]);
 
         $expense = LeaseExpense::create($validated);
         WorkflowService::log([
-    'expense_id' => $expense->id,
-      'status' => 'CREATED',
-        'notes' => 'Expense created',
-        'stage_order' => 1
-]);
+            'expense_id' => $expense->expense_id,
+            'status' => 'CREATED',
+            'notes' => 'Expense created',
+            'stage_order' => 1
+        ]);
 
         return response()->json([
             'message' => 'Expense created successfully',
@@ -73,94 +90,96 @@ class LeaseExpenseController extends Controller
     }
 
     // Show a specific expense
- public function show(Request $request, $id)
- {
-    $this->checkPermission($request->user(), 'view');
+    public function show(Request $request, $id)
+    {
+        $this->checkPermission($request->user(), 'view');
 
-    $expense = LeaseExpense::where('expense_id', $id)->first();
+         $expense = LeaseExpense::where('expense_id', $id)->first();
 
-    if (!$expense) {
-        return response()->json(['message' => 'Expense not found'], 404);
-    }
-
-    /* 🔹 Fetch workflow logs for this expense */
-    $logs = WorkflowLog::where('expense_id', $id)
-        ->orderBy('created_at', 'asc')
-        ->get();
-
-    $createdLog  = $logs->firstWhere('status', 'CREATED');
-    $approvedLog = $logs->firstWhere('status', 'APPROVED');
-
-    $creator = null;
-    $approver = null;
-
-    if ($createdLog) {
-        $user = User::find($createdLog->user_id);
-        if ($user) {
-            $creator = [
-                'user_id'    => $user->user_id,
-                'name'       => trim($user->user_firstName . ' ' . $user->user_lastName),
-                'created_at' => $createdLog->created_at
-            ];
+        if (!$expense) {
+            return response()->json(['message' => 'Expense not found'], 404);
         }
-    }
 
-    if ($approvedLog) {
-        $user = User::find($approvedLog->user_id);
-        if ($user) {
-            $approver = [
-                'user_id'     => $user->user_id,
-                'name'        => trim($user->user_firstName . ' ' . $user->user_lastName),
-                'approved_at' => $approvedLog->created_at
-            ];
+        /* 🔹 Fetch workflow logs for this expense */
+        $logs = WorkflowLog::where('expense_id', $id)
+            ->orderBy('created_at', 'asc')
+            ->get();
+
+        $createdLog  = $logs->firstWhere('status', 'CREATED');
+        $approvedLog = $logs->firstWhere('status', 'APPROVED');
+
+        $creator = null;
+        $approver = null;
+
+        if ($createdLog) {
+            $user = User::find($createdLog->user_id);
+            if ($user) {
+                $creator = [
+                    'user_id'    => $user->user_id,
+                    'name'       => trim($user->user_firstName . ' ' . $user->user_lastName),
+                    'created_at' => $createdLog->created_at
+                ];
+            }
         }
-    }
 
-    return response()->json([
-        'expense' => $expense,
-        'workflow' => [
-            'status' => $approvedLog ? 'APPROVED' : 'PENDING',
-            'created_by' => $creator,
-            'approved_by' => $approver ?? 'Approval Pending'
-        ]
-    ], 200);
- }
+        if ($approvedLog) {
+            $user = User::find($approvedLog->user_id);
+            if ($user) {
+                $approver = [
+                    'user_id'     => $user->user_id,
+                    'name'        => trim($user->user_firstName . ' ' . $user->user_lastName),
+                    'approved_at' => $approvedLog->created_at
+                ];
+            }
+        }
+
+        return response()->json([
+            'expense' => $expense,
+            'workflow' => [
+                'status' => $approvedLog ? 'APPROVED' : 'PENDING',
+                'created_by' => $creator,
+                'approved_by' => $approver ?? 'Approval Pending'
+            ]
+        ], 200);
+    }
 
     // Update an expense
-public function update(Request $request, $id)
-{
-    $this->checkPermission($request->user(), 'edit');
+    public function update(Request $request, $id)
+    {
+        $this->checkPermission($request->user(), 'edit');
 
-    $expense = LeaseExpense::where('expense_id', $id)->first();
+        $expense = LeaseExpense::where('expense_id', $id)->first();
 
-    if (!$expense) {
-        return response()->json(['message' => 'Expense not found'], 404);
+        if (!$expense) {
+            return response()->json(['message' => 'Expense not found'], 404);
+        }
+
+        $validated = $request->validate([
+            'expense_year' => 'nullable|string',
+            'expense_period' => 'nullable|string',
+            'expense_category' => 'nullable|string',
+            'expense_type' => 'nullable|string',
+            'amount' => 'nullable|string',
+            'currency' => 'nullable|string',
+            'note' => 'nullable|string',
+            'vendor_name' => 'nullable|string',
+            'account_code' => 'nullable|string',
+        ]);
+
+        $expense->update($validated);
+
+        WorkflowService::log([
+            'expense_id' => $expense->expense_id,
+            'status' => 'UPDATED',
+            'notes' => 'Expense updated',
+            'stage_order' => 2
+        ]);
+
+        return response()->json([
+            'message' => 'Expense updated successfully',
+            'data' => $expense
+        ]);
     }
-
-    $validated = $request->validate([
-        'expense_year' => 'nullable|string',
-        'expense_period' => 'nullable|string',
-        'expense_category' => 'nullable|string',
-        'expense_type' => 'nullable|string',
-        'amount' => 'nullable|string',
-        'currency' => 'nullable|string',
-        'note' => 'nullable|string',
-    ]);
-
-    $expense->update($validated);
-
-    WorkflowService::log([
-        'expense_id' => $expense->expense_id,
-        'status' => 'UPDATED',
-        'notes' => 'Expense updated',
-        'stage_order' => 2
-    ]);
-
-    return response()->json([
-        'message' => 'Expense updated successfully',
-        'data' => $expense
-    ]);
-}
 
 
     // Delete an expense (mark as inactive)
@@ -176,16 +195,40 @@ public function update(Request $request, $id)
 
         $expense->update(['status' => 'Inactive']);
         WorkflowService::log([
-    'expense_id' => $expense->id,
-    'status' => 'DELETED',
-     'notes' => 'Expense updated',
-        'stage_order' => 3
-]);
+            'expense_id' => $expense->id,
+            'status' => 'DELETED',
+            'notes' => 'Expense updated',
+            'stage_order' => 3
+        ]);
 
         return response()->json(['message' => 'Expense marked as inactive'], 200);
     }
 
+    public function getByBuilding(Request $request, $buildingId)
+{
+    $this->checkPermission($request->user(), 'view');
+
+    $expenses = LeaseExpense::where('building_id', $buildingId)
+        ->latest()
+        ->get();
+
+    return response()->json([
+        'data' => $expenses
+    ], 200);
+}
+
+public function getByLease(Request $request, $leaseId)
+{
+    $this->checkPermission($request->user(), 'view');
+
+    $expenses = LeaseExpense::where('lease_id', $leaseId)
+        ->latest()
+        ->get();
+
+    return response()->json([
+        'data' => $expenses
+    ], 200);
+}
 
 
 }
-

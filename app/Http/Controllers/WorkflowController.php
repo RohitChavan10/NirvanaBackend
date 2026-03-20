@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\WorkflowLog;
 use App\Services\WorkflowService;
+use App\Models\LeaseExpense;
 
 class WorkflowController extends Controller
 {
@@ -95,7 +96,7 @@ public function show(Request $request, $id)
         $entity = \App\Models\Lease::find($log->lease_id);
     } elseif ($log->expense_id) {
         $entityType = 'EXPENSE';
-        $entity = \App\Models\LeaseExpense::find($log->expense_id);
+       $entity = \App\Models\LeaseExpense::where('expense_id', $log->expense_id)->first();
     }
 
     return response()->json([
@@ -117,6 +118,11 @@ public function show(Request $request, $id)
         ]);
 
         $log = WorkflowLog::findOrFail($id);
+        // ✅ Update Expense status
+    if ($log->expense_id) {
+        LeaseExpense::where('expense_id', $log->expense_id)
+            ->update(['status' => 'APPROVED']);
+    }
 
         WorkflowService::log([
             'building_id' => $log->building_id,
@@ -142,6 +148,12 @@ public function show(Request $request, $id)
         ]);
 
         $log = WorkflowLog::findOrFail($id);
+          // ✅ Update Expense status
+    if ($log->expense_id) {
+        LeaseExpense::where('expense_id', $log->expense_id)
+            ->update(['status' => 'REJECTED']);
+    }
+
 
         WorkflowService::log([
             'building_id' => $log->building_id,

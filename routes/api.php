@@ -76,6 +76,8 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::get('/{id}', [LeaseExpenseController::class, 'show']);
         Route::put('/{id}', [LeaseExpenseController::class, 'update']);
         Route::delete('/{id}', [LeaseExpenseController::class, 'destroy']);
+        Route::get('/buildings/{id}', [LeaseExpenseController::class, 'getByBuilding']);
+       Route::get('/leases/{id}', [LeaseExpenseController::class, 'getByLease']);
     });
 });
 

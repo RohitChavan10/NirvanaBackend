@@ -14,6 +14,13 @@ class AccountInvoice extends Model
         'file_name',
         'file_path',
         'uploaded_by',
+        'due_date',
+        'issued_by',
+        'issued_to',
+        'subtotal_amount',
+        'tax_amount',
+        'total_amount',
+        'gst_amount',
     ];
 
     public function expense()

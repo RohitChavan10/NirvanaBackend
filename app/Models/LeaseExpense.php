@@ -22,6 +22,8 @@ class LeaseExpense extends Model
         'document_url',
         'is_escalable',
         'note',
+        'vendor_name',
+        'account_code',
     ];
 
     /**

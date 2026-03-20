@@ -32,7 +32,15 @@ class AccountInvoiceController extends Controller
             'invoice_date'     => 'nullable|date',
             'amount'           => 'nullable|string',
             'files'            => 'required',
+            'due_date'        => 'nullable|date',
+            'issued_by'        => 'nullable|string',
+            'issued_to'        => 'nullable|string',
+            'subtotal_amount'  => 'nullable|numeric',
+            'tax_amount'       => 'nullable|numeric',
+            'total_amount'     => 'nullable|numeric',
+            'gst_amount'       => 'nullable|numeric',   
             'files.*'          => 'file|mimes:pdf,doc,docx,jpg,jpeg,png|max:10240',
+
         ]);
 
         $uploaded = [];
@@ -53,6 +61,14 @@ class AccountInvoiceController extends Controller
                     'file_name'      => $file->getClientOriginalName(),
                     'file_path'      => $path, // only relative path
                     'uploaded_by'    => $request->user()->user_id ?? null,
+                    'due_date'       => $request->due_date,
+                    'issued_by'      => $request->issued_by,
+                    'issued_to'      => $request->issued_to,
+                    'subtotal_amount' => $request->subtotal_amount,
+                    'tax_amount'     => $request->tax_amount,
+                    'total_amount'   => $request->total_amount,
+                    'gst_amount'     => $request->gst_amount,
+
                 ]);
 
                 $uploaded[] = $invoice;
@@ -114,6 +130,14 @@ class AccountInvoiceController extends Controller
             'invoice_number' => 'nullable|string',
             'invoice_date'   => 'nullable|date',
             'amount'         => 'nullable|string',
+            'due_date'       => 'nullable|date',
+            'issued_by'      => 'nullable|string',
+            'issued_to'      => 'nullable|string',
+            'subtotal_amount' => 'nullable|numeric',
+            'tax_amount'     => 'nullable|numeric',
+            'total_amount'   => 'nullable|numeric',
+            'gst_amount'     => 'nullable|numeric', 
+
         ]);
 
         if ($request->has('invoice_number')) {
