@@ -52,4 +52,8 @@ class Building extends Model
     {
         return $this->hasMany(Lease::class, 'system_building_id', 'system_building_id');
     }
+    public function certificates()
+{
+    return $this->hasMany(Certificate::class, 'building_id', 'id');
+}
 }

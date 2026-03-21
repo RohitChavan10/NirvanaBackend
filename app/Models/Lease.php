@@ -68,9 +68,9 @@ class Lease extends Model
      */
 
     // Lease belongs to a Building
-    public function building()
+       public function building()
     {
-        return $this->belongsTo(Building::class, 'system_building_id', 'system_building_id');
+        return $this->belongsTo(Building::class, 'building_id', 'id');
     }
 
       public function documents()

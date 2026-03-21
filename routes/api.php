@@ -14,6 +14,7 @@ use App\Http\Controllers\RoleController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\LeaseDocumentController;
+use App\Http\Controllers\CertificateController;
 
 /*
 |--------------------------------------------------------------------------
@@ -50,7 +51,25 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::get('/{id}', [BuildingController::class, 'show']);
     Route::put('/{id}', [BuildingController::class, 'update']);
     Route::delete('/{id}', [BuildingController::class, 'destroy']);
+    Route::get('/{building_id}/certificates', [CertificateController::class, 'byBuilding']);
+    Route::post('/{building_id}/certificates', [CertificateController::class, 'store']);
+
 });
+
+/*
+|--------------------------------------------------------------------------
+|Certificate Routes
+|--------------------------------------------------------------------------
+*/
+Route::middleware('auth:sanctum')->prefix('certificates')->group(function () {
+
+    Route::get('/', [CertificateController::class, 'all']);
+    Route::get('/{id}', [CertificateController::class, 'show']);
+    Route::put('/{id}', [CertificateController::class, 'update']);
+    Route::delete('/{id}', [CertificateController::class, 'destroy']);
+
+});
+
 
     /*
     |--------------------------------------------------------------------------
