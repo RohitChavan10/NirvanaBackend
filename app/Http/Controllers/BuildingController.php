@@ -8,6 +8,7 @@ use App\Services\WorkflowService;
 use Illuminate\Http\Request;
 use App\Models\WorkflowLog;
 use App\Models\User;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Auth;
 
 class BuildingController extends Controller
@@ -35,14 +36,26 @@ private function checkPermission($user, string $action)
     }
 }
     // List all buildings
-    public function index(Request $request)
-    {
-        $this->checkPermission($request->user(), 'view');
+public function index(Request $request)
+{
+  $this->checkPermission($request->user(), 'view');
 
-        return response()->json(Building::all(), 200);
+    $perPage = $request->get('per_page', 10);
+    $search = $request->get('search');
+
+    $query = Building::query();
+
+    // 🔍 Apply search if present
+    if ($search) {
+        $query->where('building_name', 'like', '%' . $search . '%');
     }
 
-    // List all buildings
+    $buildings = $query->paginate($perPage);
+
+    return response()->json($buildings, 200);
+}
+
+    // List all buildings for lease page
         public function BuildingID(Request $request)
     {
         $this->checkPermission($request->user(), 'view');
@@ -201,4 +214,75 @@ public function show(Request $request, $id)
     ]);
         return response()->json(['message' => 'Building marked as inactive'], 200);
     }
+
+public function export(Request $request)
+{
+    $this->checkPermission($request->user(), 'view');
+
+    $columns = $request->input('columns', []);
+    $format = $request->input('format', 'csv');
+    $search = $request->input('search');
+
+    $query = Building::query();
+
+    // 🔍 Search filter
+    if ($search) {
+        $query->where('building_name', 'like', "%$search%");
+    }
+
+    $data = $query->get();
+
+    // Select only required columns
+    $filtered = $data->map(function ($item) use ($columns) {
+        return collect($item)->only($columns);
+    });
+
+    switch ($format) {
+        case 'csv':
+            return $this->exportCSV($filtered, $columns);
+
+        case 'json':
+            return response()->json($filtered);
+
+        case 'pdf':
+            return $this->exportPDF($filtered, $columns);
+
+        default:
+            return response()->json(['error' => 'Invalid format'], 400);
+    }
+}
+private function exportCSV($data, $columns)
+{
+    $filename = "buildings.csv";
+
+    $headers = [
+        "Content-Type" => "text/csv",
+        "Content-Disposition" => "attachment; filename=$filename",
+    ];
+
+    $callback = function () use ($data, $columns) {
+        $file = fopen('php://output', 'w');
+
+        fputcsv($file, $columns);
+
+        foreach ($data as $row) {
+            fputcsv($file, $row->toArray());
+        }
+
+        fclose($file);
+    };
+
+    return response()->stream($callback, 200, $headers);
+}
+
+private function exportPDF($data, $columns)
+{
+    $pdf = Pdf::loadView('exports.buildings', [
+        'data' => $data,
+        'columns' => $columns
+    ]);
+
+    return $pdf->download('buildings.pdf');
+}
+
 }

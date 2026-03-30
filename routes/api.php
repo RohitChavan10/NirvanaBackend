@@ -53,6 +53,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::delete('/{id}', [BuildingController::class, 'destroy']);
     Route::get('/{building_id}/certificates', [CertificateController::class, 'byBuilding']);
     Route::post('/{building_id}/certificates', [CertificateController::class, 'store']);
+    Route::post('/export', [BuildingController::class, 'export']);
 
 });
 
