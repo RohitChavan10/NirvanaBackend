@@ -126,6 +126,8 @@ Route::prefix('admin')->middleware(['auth:sanctum'])->group(function () {
     Route::put('roles/{id}', [RoleController::class, 'update']);
     Route::delete('roles/{id}', [RoleController::class, 'destroy']);
 
+    Route::post('roles/permissions', [RoleController::class, 'assignPermissions']);
+
     // Users (assign roles, list users)
     Route::get('users', [UserController::class, 'index']);
     Route::post('users/{id}/roles', [UserController::class, 'assignRoles']);

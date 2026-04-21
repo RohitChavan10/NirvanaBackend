@@ -8,5 +8,4 @@ class Permission extends Model
 {
     protected $fillable = ['action']; // create, view, approve, etc.
 
-
 }

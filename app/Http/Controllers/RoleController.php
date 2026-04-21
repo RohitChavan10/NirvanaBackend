@@ -12,11 +12,35 @@ use Illuminate\Support\Facades\DB;
 class RoleController extends Controller
 {
     // List all roles
-    public function index()
-    {
-        $roles = Role::with('modules.permissions')->get();
-        return response()->json($roles);
-    }
+  public function index()
+{
+    $roles = Role::all();
+    $modules = Module::all();
+    $permissions = Permission::all();
+
+    $data = $roles->map(function ($role) use ($modules) {
+        return [
+            'id' => $role->id,
+            'code' => $role->code,
+            'modules' => $modules->map(function ($module) use ($role) {
+
+                $perms = DB::table('role_module_permissions')
+                    ->where('role_id', $role->id)
+                    ->where('module_id', $module->id)
+                    ->pluck('permission_id')
+                    ->toArray();
+
+                return [
+                    'id' => $module->id,
+                    'code' => $module->code,
+                    'permissions' => Permission::whereIn('id', $perms)->get()
+                ];
+            })
+        ];
+    });
+
+    return response()->json($data);
+}
 
     // Create a new role
     public function store(Request $request)
@@ -96,27 +120,27 @@ class RoleController extends Controller
     }
 
     // Assign permissions to a role for a specific module
-    public function assignPermissions(Request $request)
-    {
-        $validated = $request->validate([
-            'role_id' => 'required|exists:roles,id',
-            'module_id' => 'required|exists:modules,id',
-            'permission_ids' => 'required|array',
-            'permission_ids.*' => 'exists:permissions,id',
-        ]);
+public function assignPermissions(Request $request)
+{
+    $validated = $request->validate([
+        'role_id' => 'required|exists:roles,id',
+        'module_id' => 'required|exists:modules,id',
+        'permission_ids' => 'required|array',
+    ]);
 
-        foreach ($validated['permission_ids'] as $pid) {
-            DB::table('role_module_permissions')->updateOrInsert(
-                [
-                    'role_id' => $validated['role_id'],
-                    'module_id' => $validated['module_id'],
-                    'permission_id' => $pid,
-                ]
-            );
-        }
+    DB::table('role_module_permissions')
+        ->where('role_id', $validated['role_id'])
+        ->where('module_id', $validated['module_id'])
+        ->delete();
 
-        return response()->json([
-            'message' => 'Permissions assigned successfully'
+    foreach ($validated['permission_ids'] as $pid) {
+        DB::table('role_module_permissions')->insert([
+            'role_id' => $validated['role_id'],
+            'module_id' => $validated['module_id'],
+            'permission_id' => $pid,
         ]);
     }
+
+    return response()->json(['message' => 'Permissions updated']);
+}
 }
