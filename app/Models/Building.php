@@ -14,6 +14,8 @@ class Building extends Model
         'system_building_id',
         'sio',
         'building_name',
+        'wing',
+        'unit_no',
         'address_1',
         'city',
         'zip_code',

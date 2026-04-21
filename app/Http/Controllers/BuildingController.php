@@ -72,6 +72,8 @@ public function index(Request $request)
             'system_building_id' => 'nullable|string|unique:buildings',
             'sio' => 'nullable|string',
             'building_name' => 'required|string',
+            'wing' => 'nullable|string',
+            'unit_no' => 'nullable|string',
             'address_1' => 'nullable|string',
             'city' => 'nullable|string',
             'zip_code' => 'nullable|string',
