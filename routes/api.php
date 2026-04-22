@@ -83,6 +83,8 @@ Route::middleware('auth:sanctum')->prefix('certificates')->group(function () {
         Route::get('/{id}', [LeaseController::class, 'show']);
         Route::put('/{id}', [LeaseController::class, 'update']);
         Route::delete('/{id}', [LeaseController::class, 'destroy']);
+        Route::post('/export', [LeaseController::class, 'export']);
+        Route::get('/columns', [LeaseController::class, 'columns']);
     });
 
     /*

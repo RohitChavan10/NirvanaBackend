@@ -32,15 +32,28 @@ private function checkPermission($user, string $action)
 }
 
     // List all leases
-    public function index(Request $request)
-    {
-        $this->checkPermission($request->user(), 'view');
+ public function index(Request $request)
+{
+    $this->checkPermission($request->user(), 'view');
 
-        return response()->json(
-            Lease::with('building')->get(),
-            200
-        );
+    $perPage = $request->get('per_page', 10);
+    $search = $request->get('search');
+
+    $query = Lease::with('building');
+
+    // 🔍 Apply search (customize fields if needed)
+    if ($search) {
+        $query->where(function ($q) use ($search) {
+            $q->where('client_lease_id', 'like', "%$search%")
+              ->orWhere('tenant_legal_name', 'like', "%$search%")
+              ->orWhere('landlord_legal_name', 'like', "%$search%");
+        });
     }
+
+    $leases = $query->paginate($perPage);
+
+    return response()->json($leases, 200);
+}
 
     // Create a lease
     public function store(Request $request)
@@ -224,4 +237,89 @@ public function show(Request $request, $id)
 
         return response()->json(['message' => 'Lease marked as inactive'], 200);
     }
+
+    private function exportCSV($data, $columns)
+{
+    $filename = "leases.csv";
+
+    $headers = [
+        "Content-Type" => "text/csv",
+        "Content-Disposition" => "attachment; filename=$filename",
+    ];
+
+    $callback = function () use ($data, $columns) {
+        $file = fopen('php://output', 'w');
+
+        fputcsv($file, $columns);
+
+        foreach ($data as $row) {
+            fputcsv($file, $row->toArray());
+        }
+
+        fclose($file);
+    };
+
+    return response()->stream($callback, 200, $headers);
+}
+
+private function exportPDF($data, $columns)
+{
+    $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('exports.leases', [
+        'data' => $data,
+        'columns' => $columns
+    ]);
+
+    return $pdf->download('leases.pdf');
+}
+
+public function export(Request $request)
+{
+    $this->checkPermission($request->user(), 'view');
+
+    $columns = $request->input('columns', []);
+    $format = $request->input('format', 'csv');
+    $search = $request->input('search');
+
+    $query = Lease::query();
+
+    // 🔍 Search filter
+    if ($search) {
+        $query->where(function ($q) use ($search) {
+            $q->where('client_lease_id', 'like', "%$search%")
+              ->orWhere('tenant_legal_name', 'like', "%$search%")
+              ->orWhere('landlord_legal_name', 'like', "%$search%");
+        });
+    }
+
+    $data = $query->get();
+
+    // Filter columns
+    $filtered = $data->map(function ($item) use ($columns) {
+        return collect($item)->only($columns);
+    });
+
+    switch ($format) {
+        case 'csv':
+            return $this->exportCSV($filtered, $columns);
+
+        case 'json':
+            return response()->json($filtered);
+
+        case 'pdf':
+            return $this->exportPDF($filtered, $columns);
+
+        default:
+            return response()->json(['error' => 'Invalid format'], 400);
+    }
+}
+
+public function columns(Request $request)
+{
+    $this->checkPermission($request->user(), 'view');
+
+    $columns = \Schema::getColumnListing('leases');
+
+    return response()->json($columns);
+}
+
 }
