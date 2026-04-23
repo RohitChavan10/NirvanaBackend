@@ -35,8 +35,12 @@ public function index(Request $request)
 {
     $this->checkPermission($request->user(), 'view');
 
+    $perPage = $request->get('per_page', 10);
+    $search  = $request->get('search');
+
     $query = LeaseExpense::query();
 
+    // 🔍 Filters
     if ($request->building_id) {
         $query->where('building_id', $request->building_id);
     }
@@ -49,7 +53,21 @@ public function index(Request $request)
         $query->where('status', $request->status);
     }
 
-    return response()->json($query->latest()->get(), 200);
+    // 🔍 Search across multiple fields
+    if ($search) {
+        $query->where(function ($q) use ($search) {
+            $q->where('expense_category', 'like', "%{$search}%")
+              ->orWhere('expense_type', 'like', "%{$search}%")
+              ->orWhere('vendor_name', 'like', "%{$search}%")
+              ->orWhere('account_code', 'like', "%{$search}%")
+              ->orWhere('amount', 'like', "%{$search}%");
+        });
+    }
+
+    // 📄 Pagination
+    $expenses = $query->latest()->paginate($perPage);
+
+    return response()->json($expenses, 200);
 }
 
     // Create a new expense
