@@ -60,7 +60,7 @@ public function index(Request $request)
     {
         $this->checkPermission($request->user(), 'view');
 
-        return response()->json(Building::select('id','building_name')->get(), 200);
+        return response()->json(Building::select('id','building_name','wing','unit_no')->get(), 200);
     }
 
     // Store a new building
