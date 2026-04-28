@@ -19,6 +19,7 @@ class Building extends Model
         'address_1',
         'city',
         'zip_code',
+        'state',
         'country',
         'clli',
         'building_type',
