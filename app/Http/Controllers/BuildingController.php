@@ -10,6 +10,7 @@ use App\Models\WorkflowLog;
 use App\Models\User;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Validation\Rule;
 
 class BuildingController extends Controller
 {
@@ -71,9 +72,16 @@ public function index(Request $request)
         $validated = $request->validate([
             'system_building_id' => 'nullable|string|unique:buildings',
             'sio' => 'nullable|string',
-            'building_name' => 'required|string',
-            'wing' => 'nullable|string',
-            'unit_no' => 'nullable|string',
+             'building_name' => 'required|string',
+    'wing' => 'nullable|string',
+    'unit_no' => [
+        'required',
+        Rule::unique('buildings')->where(function ($query) use ($request) {
+            return $query
+                ->where('building_name', $request->building_name)
+                ->where('wing', $request->wing);
+        }),
+    ],
             'address_1' => 'nullable|string',
             'city' => 'nullable|string',
             'zip_code' => 'nullable|string',
