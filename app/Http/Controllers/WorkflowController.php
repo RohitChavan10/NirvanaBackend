@@ -35,43 +35,76 @@ public function pending(Request $request)
 {
     $this->checkPermission($request->user(), 'view');
 
-    $logs = WorkflowLog::with([
-            'user:user_id,user_firstName,user_lastName',
-            'building:id,building_name',
-            'lease:id,client_lease_id',
-            'expense:expense_id,expense_type'
-        ])
-        ->whereIn('status', ['CREATED', 'UPDATED', 'APPROVED', 'REJECTED'])
-        ->orderBy('created_at', 'desc')
-        ->get()
-        ->map(function ($log) {
+    $perPage = $request->get('per_page', 10);
+    $search = $request->get('search');
 
-            return [
-                'id' => $log->id,
-                'status' => $log->status,
-                'notes' => $log->notes,
-                'created_at' => $log->created_at,
+    $query = WorkflowLog::with([
+        'user:user_id,user_firstName,user_lastName',
+        'building:id,building_name',
+        'lease:id,client_lease_id',
+        'expense:expense_id,expense_type'
+    ])
+    ->whereIn('status', ['CREATED', 'UPDATED', 'APPROVED', 'REJECTED']);
 
-                'user' => $log->user
-                    ? $log->user->user_firstName . ' ' . $log->user->user_lastName
-                    : null,
+    // 🔍 SEARCH LOGIC
+    if ($search) {
+        $query->where(function ($q) use ($search) {
 
-                'entity_type' =>
-                    $log->building_id ? 'BUILDING' :
-                    ($log->lease_id ? 'LEASE' : 'EXPENSE'),
+            $q->where('status', 'like', "%$search%")
+              ->orWhere('notes', 'like', "%$search%")
 
-                'entity_name' =>
-                    $log->building
-                        ? $log->building->building_name
-                        : ($log->lease
-                            ? $log->lease->client_lease_id
-                            : ($log->expense
-                                ? 'Expense #' . $log->expense->expense_id
-                                : null
-                            )
-                        )
-            ];
+              ->orWhereHas('building', function ($q2) use ($search) {
+                  $q2->where('building_name', 'like', "%$search%");
+              })
+
+              ->orWhereHas('lease', function ($q2) use ($search) {
+                  $q2->where('client_lease_id', 'like', "%$search%");
+              })
+
+              ->orWhereHas('expense', function ($q2) use ($search) {
+                  $q2->where('expense_type', 'like', "%$search%");
+              })
+
+              ->orWhereHas('user', function ($q2) use ($search) {
+                  $q2->where('user_firstName', 'like', "%$search%")
+                     ->orWhere('user_lastName', 'like', "%$search%");
+              });
         });
+    }
+
+    // ✅ PAGINATION (IMPORTANT)
+    $logs = $query
+        ->orderBy('created_at', 'desc')
+        ->paginate($perPage);
+
+    // ✅ TRANSFORM DATA (same as before)
+    $logs->getCollection()->transform(function ($log) {
+        return [
+            'id' => $log->id,
+            'status' => $log->status,
+            'notes' => $log->notes,
+            'created_at' => $log->created_at,
+
+            'user' => $log->user
+                ? $log->user->user_firstName . ' ' . $log->user->user_lastName
+                : null,
+
+            'entity_type' =>
+                $log->building_id ? 'BUILDING' :
+                ($log->lease_id ? 'LEASE' : 'EXPENSE'),
+
+            'entity_name' =>
+                $log->building
+                    ? $log->building->building_name
+                    : ($log->lease
+                        ? $log->lease->client_lease_id
+                        : ($log->expense
+                            ? 'Expense #' . $log->expense->expense_id
+                            : null
+                        )
+                    )
+        ];
+    });
 
     return response()->json($logs);
 }
@@ -109,61 +142,102 @@ public function show(Request $request, $id)
     /**
      * 3️⃣ Approve workflow item
      */
-    public function approve(Request $request, $id)
-    {
-        $this->checkPermission($request->user(), 'approve');
+public function approve(Request $request, $id)
+{
+    $this->checkPermission($request->user(), 'approve');
 
-        $request->validate([
-            'notes' => 'nullable|string',
-        ]);
+    $request->validate([
+        'notes' => 'nullable|string',
+    ]);
 
-        $log = WorkflowLog::findOrFail($id);
-        // ✅ Update Expense status
+    $log = WorkflowLog::findOrFail($id);
+
+    // 🔥 Get latest log for entity
+    $latestLog = WorkflowLog::where(function ($q) use ($log) {
+        if ($log->building_id) {
+            $q->where('building_id', $log->building_id);
+        } elseif ($log->lease_id) {
+            $q->where('lease_id', $log->lease_id);
+        } elseif ($log->expense_id) {
+            $q->where('expense_id', $log->expense_id);
+        }
+    })
+    ->orderBy('created_at', 'desc')
+    ->first();
+
+    // ❌ BLOCK invalid approval
+    if (!$latestLog || !in_array($latestLog->status, ['CREATED', 'UPDATED'])) {
+        return response()->json([
+            'message' => 'Already approved or cannot be approved'
+        ], 400);
+    }
+
+    // ✅ Update Expense status
     if ($log->expense_id) {
         LeaseExpense::where('expense_id', $log->expense_id)
             ->update(['status' => 'APPROVED']);
     }
 
-        WorkflowService::log([
-            'building_id' => $log->building_id,
-            'lease_id'    => $log->lease_id,
-            'expense_id'  => $log->expense_id,
-            'status'      => 'APPROVED',
-            'stage_order' => 3,
-            'notes'       => $request->notes,
-        ]);
+    WorkflowService::log([
+        'building_id' => $log->building_id,
+        'lease_id'    => $log->lease_id,
+        'expense_id'  => $log->expense_id,
+        'status'      => 'APPROVED',
+        'stage_order' => 3,
+        'notes'       => $request->notes,
+    ]);
 
-        return response()->json(['message' => 'Approved successfully']);
-    }
+    return response()->json(['message' => 'Approved successfully']);
+}
 
     /**
      * 4️⃣ Reject workflow item
      */
-    public function reject(Request $request, $id)
-    {
-        $this->checkPermission($request->user(), 'approve');
+public function reject(Request $request, $id)
+{
+    $this->checkPermission($request->user(), 'approve');
 
-        $request->validate([
-            'notes' => 'required|string',
-        ]);
+    $request->validate([
+        'notes' => 'required|string',
+    ]);
 
-        $log = WorkflowLog::findOrFail($id);
-          // ✅ Update Expense status
+    $log = WorkflowLog::findOrFail($id);
+
+    // 🔥 Get latest log for entity
+    $latestLog = WorkflowLog::where(function ($q) use ($log) {
+        if ($log->building_id) {
+            $q->where('building_id', $log->building_id);
+        } elseif ($log->lease_id) {
+            $q->where('lease_id', $log->lease_id);
+        } elseif ($log->expense_id) {
+            $q->where('expense_id', $log->expense_id);
+        }
+    })
+    ->orderBy('created_at', 'desc')
+    ->first();
+
+    // ❌ BLOCK invalid rejection
+    if (!$latestLog || !in_array($latestLog->status, ['CREATED', 'UPDATED'])) {
+        return response()->json([
+            'message' => 'Already processed. Cannot reject.'
+        ], 400);
+    }
+
+    // ✅ Update Expense status
     if ($log->expense_id) {
         LeaseExpense::where('expense_id', $log->expense_id)
             ->update(['status' => 'REJECTED']);
     }
 
+    WorkflowService::log([
+        'building_id' => $log->building_id,
+        'lease_id'    => $log->lease_id,
+        'expense_id'  => $log->expense_id,
+        'status'      => 'REJECTED',
+        'stage_order' => 4,
+        'notes'       => $request->notes,
+    ]);
 
-        WorkflowService::log([
-            'building_id' => $log->building_id,
-            'lease_id'    => $log->lease_id,
-            'expense_id'  => $log->expense_id,
-            'status'      => 'REJECTED',
-            'stage_order' => 4,
-            'notes'       => $request->notes,
-        ]);
-
-        return response()->json(['message' => 'Rejected successfully']);
-    }
+    return response()->json(['message' => 'Rejected successfully']);
+}
 }
