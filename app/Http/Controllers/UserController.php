@@ -9,11 +9,21 @@ use Illuminate\Http\Request;
 class UserController extends Controller
 {
     // List all users
-    public function index()
-    {
-        $users = User::with('roles')->get();
-        return response()->json($users, 200);
+public function index(Request $request)
+{
+    $perPage = $request->get('per_page', 10);
+    $search = $request->get('search');
+
+    $query = User::with('roles');
+
+    if ($search) {
+        $query->where('username', 'like', '%' . $search . '%');
     }
+
+    $users = $query->paginate($perPage);
+
+    return response()->json($users, 200);
+}
 
     // Assign roles to a user
     public function assignRoles(Request $request, $id)
