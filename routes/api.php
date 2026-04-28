@@ -15,6 +15,7 @@ use App\Http\Controllers\UserController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\LeaseDocumentController;
 use App\Http\Controllers\CertificateController;
+use App\Http\Controllers\FinanceDashboardController;
 
 /*
 |--------------------------------------------------------------------------
@@ -146,6 +147,11 @@ Route::middleware('auth:sanctum')->prefix('workflow')->group(function () {
 Route::middleware('auth:sanctum')->get(
   '/dashboard/stats',
   [DashboardController::class, 'stats']
+);
+
+Route::middleware('auth:sanctum')->get(
+  '/finance-dashboard/stats',
+  [FinanceDashboardController::class, 'stats']
 );
 
 Route::middleware('auth:sanctum')->group(function () {
