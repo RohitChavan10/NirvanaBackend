@@ -43,7 +43,7 @@ class CertificateController extends Controller
             'status'             => 'nullable|string',
             'notes'              => 'nullable|string',
             'files'              => 'required',
-            'files.*'            => 'file|mimes:pdf,jpg,jpeg,png|max:10240',
+            'files.*'            => 'file|mimes:pdf,jpg,jpeg,png,svg,doc,docx,txt|max:10240',
         ]);
 
         $uploaded = [];
